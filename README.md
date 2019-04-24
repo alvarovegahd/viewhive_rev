@@ -1,4 +1,4 @@
-# ViewHive Rev by AVH V1
+# ViewHive Rev by AVH and MCZ V1
 
 Based on Damon's code, with a patch
 

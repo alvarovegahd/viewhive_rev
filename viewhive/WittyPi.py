@@ -1,3 +1,4 @@
+# Edited by AVH, with patch for wittypi bug
 import os
 from datetime import datetime as dt
 # from pythonwifi.iwlibs import Wireless
@@ -394,7 +395,7 @@ class Schedule(object):
                 else:  # All other events
                     print("Average event ..."),
                     gapA = self.events[i + 1]['start'] - curTime
-                    if gapA % 100 >= 60 or gapA + (self.events[i]['start'] % 100) >= 60:
+                    if gapA % 100 >= 60 or (gapA % 100 + (self.events[i]['start'] % 100)) >= 60:    #MCZ: add % 100 next to gapA
                         # (eg. 1350 start to 1405 gives gap of 55 instead of 15
                         print("gap is over 60 or crosses an hour mark")
                         print("gap is: %s" % gapA)
@@ -594,12 +595,102 @@ class Schedule(object):
         print("Curent Working Directory: {}".format(workingDir))
         os.chdir('/')
 
+        #AVH EDITS AND FUNCTIONS BEGIN
+        
+        def substract_hour_4bug(hour_string):
+            if int(hour_string)>=2:
+                return str(int(hour_string)-1).zfill(2)
+            else:
+                print("INVALID HOUR. THIS PATCH DOES NOT WORK FOR HOURS BETWEEN 0 AND 2")
+                return "23" # if hour_string = 00 or 01, return 23. Anyways it does not work for hours between 00 and 01
+            
+        def get_hour_next_event():
+            if len(self.events)==0:
+                return("02:00:00") #2am so it is not buggy
+            if len(self.events)>0:
+                if len(self.events)==1:
+                    next_event=self.events[0]
+                    print("JUST ONE EVENT. NEXT EVENT:")
+                    print(next_event)
+                    begin_hour_str=str(next_event["start"]).zfill(4)
+                    begin_hour_tobeginline=substract_hour_4bug(begin_hour_str[0:2])+":"+begin_hour_str[2:4]+":00" # Remove if bug was solved in more elegant way
+                    return(begin_hour_tobeginline)
+                # Case: there is more than one event
+                time_now_int=int(nowt().replace(":",""))
+                if len(self.events)>=2:
+                    for idx,event_dict in enumerate(self.events):
+                        event_stime_int=event_dict["start"]
+                        if time_now_int>=event_stime_int: # if the event happened already this day
+                            print(str(time_now_int)+" is greater than "+str(event_stime_int)+". KEEP SEARCHING")
+                            if idx==(len(self.events)-1):
+                                #Case: final event
+                                next_event=self.events[0]
+                                print("THE NEXT EVENT IS THE FIRST EVENT:")
+                                print(next_event)
+                                begin_hour_str=str(next_event["start"]).zfill(4)
+                                begin_hour_tobeginline=substract_hour_4bug(begin_hour_str[0:2])+":"+begin_hour_str[2:4]+":00" # Remove if bug was solved in more elegant way
+                                return(begin_hour_tobeginline)
+                                break
+                        else:
+                            next_event=self.events[idx]
+                            print("NEXT EVENT:")
+                            print(next_event)
+                            begin_hour_str=str(next_event["start"]).zfill(4)
+                            begin_hour_tobeginline=substract_hour_4bug(begin_hour_str[0:2])+":"+begin_hour_str[2:4]+":00" # Remove if bug was solved in more elegant way
+                            return(begin_hour_tobeginline)
+                            break
+        
+        def fix_wittybug(begin_line):
+            # returns list of Original Begin Line and Modified Begin Line for the .wpi file
+            # substracts 1 hour to the actual hour to be read by WittyPi, to solve the wpi bug
+            # Will not work for hours=1 or 0
+            oldline=begin_line
+            newline='BEGIN 2019-01-01 ' + get_hour_next_event()
+            print("WITTYBUG fixed:")
+            print("old line:%snew line:%s"%(oldline,newline))
+            return(oldline,newline)
+
+        def search_begin_wpi(oldwpi_path):
+            # find begin line and execute fix_wittybug with that line
+            with open(oldwpi_path,"r") as fi:
+                for ln in fi:
+                    if ln.startswith("BEGIN"):
+                        oldnew_lines=fix_wittybug(ln)
+                        break
+            return(oldnew_lines)
+
+        def write_wpi_4wpibug(oldwpi_path,newwpi_path,oldnew_lines):
+            # Write the new wpi file to solve the bug
+        #     old_wpi_content = open(oldwpi_path).read()
+            new_wpi_content='''# ViewHive generated scheduled revised by AVH & MCZ
+        # Perhaps turn on 30 minutes before sunrise and sunset everyday
+        # Events dictionary:
+        # %r'''% (self.events) +"\n" + oldnew_lines[1]+"\n" +'''END 2025-07-31 23:59:59
+        ON H23 M59
+        OFF M1
+        ''' 
+            new_wpi_file=open(newwpi_path, 'w')
+            new_wpi_file.write(new_wpi_content)
+            new_wpi_file.close()
+            print("WROTE WPI 4BUG at "+newwpi_path)
+            
+        oldwpi_path="/home/pi/wittyPi/schedules/VHScriptIMPORT.wpi"
+        newwpi_path=os.path.splitext(oldwpi_path)[0]+"_4WITTYBUG.wpi"
+        oldnew_lines=search_begin_wpi(oldwpi_path)
+        write_wpi_4wpibug(oldwpi_path,newwpi_path,oldnew_lines)
+        
+        cpCom3AVH = 'sudo cp -v ' + "/home/pi/wittyPi/schedules/VHScriptIMPORT_4WITTYBUG.wpi" + ' /home/pi/wittyPi/schedule.wpi' #AVH Edits!!
+        os.system(cpCom3AVH)#AVH EDITS!
+        print("AVH4BUG: Schedule file copied ...")
+        
+        #AVH FUNCTIONS END
+
         # Copy local schedule file to wittyPi directories
         # cpCom1 = 'sudo cp -v ' + self.source + ' /home/pi/wittyPi/schedules/VHScriptIMPORT.wpi'
-        cpCom2 = 'sudo cp -v ' + self.source + ' /home/pi/wittyPi/schedule.wpi'
+        # cpCom2 = 'sudo cp -v ' + self.source + ' /home/pi/wittyPi/schedule.wpi'#AVH EDITS
         # os.system(cpCom1)
-        os.system(cpCom2)
-        print("Schedule files copied ...")
+        # os.system(cpCom2)#AVH EDITS
+        # print("Schedule files copied ...") #AVH EDITS
 
         # Set wittyPi apparent time
         # rtc_to_system() to overwrite system time
@@ -607,11 +698,21 @@ class Schedule(object):
         # os.system(syncCom1)
         # print("Setting wittyPi apparent time ...")
         # os.system('bash -c . /home/pi/wittyPi/utilities.sh; system_to_rtc')
-
+        
+        #AVH EDITS BEGIN
+        #print("AVHDEBUGGING WATCH DICT SELFEVENTS")
+        #print(self.events)
+        #print(type(self.events))
+        #print(self.events[0])
+        #print(type(self.events[0]))
+        #print(self.events[0]["start"])
+        #print(type(self.events[0]["start"]))
+        #AVH EDITS END
+        
         systemToRTC()
         # Set wittyPi schedule with its runScript.sh
         # os.system('sudo /home/pi/wittyPi/utilities.sh system_to_rtc')
-        os.system('sudo /home/pi/wittyPi/runScript.sh')
+        os.system('sudo /home/pi/wittyPi/runScript.sh') # AVH EDIT!!!
         # print(subprocess.check_output(["sudo", "/home/wittyPi/runScript.sh"],
         #                               universal_newlines=True))
         print("Ran system_to_rtc and runScript.sh ...")

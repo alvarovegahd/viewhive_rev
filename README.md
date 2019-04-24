@@ -1,4 +1,6 @@
-# ViewHive V0.9.5.0
+# ViewHive Rev by AVH V1
+
+Based on Damon's code, with a patch
 
 ViewHive is a Raspberry Pi system to periodically record videos at scheduled times and save them to external USB storage. Each video is saved as an H.264 video playable with VLC.
 

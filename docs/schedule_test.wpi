@@ -1,0 +1,8 @@
+# ViewHive generated scheduled revised by AVH & MCZ
+        # Perhaps turn on 30 minutes before sunrise and sunset everyday
+        # Events dictionary:
+        # [{'start': 1503, 'length': 1}, {'start': 1510, 'length': 1}]
+BEGIN 2019-01-01 14:10:00
+END 2025-07-31 23:59:59
+ON H23 M59
+OFF M1
